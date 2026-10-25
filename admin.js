@@ -1,9 +1,12 @@
 // admin.js
 
-// 1. بريدك الأساسي وقائمة المشرفين المسموح لهم بفتح الداشبورد وإدارة المتجر بالكامل
+// 1. قائمة البريد الإلكتروني المصرح له بدخول لوحة التحكم (بريدك الأساسي)
 const ALLOWED_ADMINS = [
-    "omarosman20074@gmail.com" // بريدك الأساسي (يمكنك إضافة إيميلات مشرفين آخرين هنا بينهم فاصلة)
+    "omarosman20074@gmail.com"
 ];
+
+// اسم مجلد التخزين داخل Supabase Storage
+const STORAGE_BUCKET_NAME = "product-images";
 
 function loginAdmin() {
     let emailInput = document.getElementById('admin-email');
@@ -16,7 +19,6 @@ function loginAdmin() {
         return;
     }
 
-    // التحقق مما إذا كان البريد موجوداً في قائمة المشرفين المصرح لهم
     if (ALLOWED_ADMINS.includes(email)) {
         localStorage.setItem('torathe_admin', email);
         checkSession();
@@ -75,21 +77,45 @@ async function addNewProduct() {
     let name = document.getElementById('new-p-name').value.trim();
     let price = parseFloat(document.getElementById('new-p-price').value);
     let stock = parseInt(document.getElementById('new-p-stock').value);
-    let img = document.getElementById('new-p-img').value.trim();
+    let imageFileInput = document.getElementById('new-p-img-file');
+    let imageFile = imageFileInput ? imageFileInput.files[0] : null;
 
-    if (!name || isNaN(price) || !img) {
-        alert("املأ الحقول المطلوبة.");
+    if (!name || isNaN(price) || !imageFile) {
+        alert("الرجاء إدخال اسم المنتج، السعر، واختيار صورة من الجهاز.");
         return;
     }
 
-    let { error } = await supabaseClient.from('products').insert([{ name, price, stock, img }]);
-    if (error) {
-        alert("خطأ في الإضافة: " + error.message);
+    // 1. إنشاء اسم فريد للصورة
+    let fileName = Date.now() + "_" + imageFile.name;
+
+    // 2. رفع الصورة إلى Supabase Storage
+    let { data: uploadData, error: uploadError } = await supabaseClient.storage
+        .from(STORAGE_BUCKET_NAME)
+        .upload(fileName, imageFile);
+
+    if (uploadError) {
+        alert("خطأ في رفع الصورة: " + uploadError.message + "\n(تأكد من إنشاء Storage Bucket باسم product-images وجعله Public في Supabase)");
+        return;
+    }
+
+    // 3. الحصول على الرابط العام للصورة
+    let { data: publicUrlData } = supabaseClient.storage
+        .from(STORAGE_BUCKET_NAME)
+        .getPublicUrl(fileName);
+
+    let img = publicUrlData.publicUrl;
+
+    // 4. حفظ بيانات المنتج في قاعدة البيانات
+    let { error: insertError } = await supabaseClient.from('products').insert([{ name, price, stock, img }]);
+    
+    if (insertError) {
+        alert("خطأ في حفظ المنتج: " + insertError.message);
     } else {
-        alert("تمت الإضافة بنجاح وتحديث المتجر للجميع!");
+        alert("تم رفع الصورة وإضافة المنتج بنجاح!");
         document.getElementById('new-p-name').value = '';
         document.getElementById('new-p-price').value = '';
-        document.getElementById('new-p-img').value = '';
+        if (document.getElementById('new-p-stock')) document.getElementById('new-p-stock').value = '';
+        imageFileInput.value = '';
         fetchAdminProducts();
     }
 }
