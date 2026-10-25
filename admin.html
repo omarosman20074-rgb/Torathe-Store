@@ -1,97 +1,91 @@
-// js/admin.js
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة التحكم الآمنة - تراث ستور</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        .login-box { max-width: 400px; margin: 100px auto; padding: 30px; background: white; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
 
-async function loginAdmin() {
-    let email = document.getElementById('admin-email').value.trim();
-    let password = document.getElementById('admin-password').value.trim();
+    <!-- قسم تسجيل الدخول -->
+    <div id="auth-container" class="container">
+        <div class="login-box">
+            <h3 class="text-center mb-4 text-danger"><i class="fas fa-lock"></i> دخول الأدمن</h3>
+            <div class="mb-3">
+                <label class="form-label">البريد الإلكتروني:</label>
+                <input type="email" id="admin-email" class="form-control" placeholder="admin@gmail.com">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">كلمة المرور:</label>
+                <input type="password" id="admin-password" class="form-control" placeholder="********">
+            </div>
+            <button onclick="loginAdmin()" class="btn btn-dark w-100 mb-3">تسجيل الدخول</button>
+            <div class="text-center">
+                <a href="index.html" class="text-decoration-none text-muted">العودة للمتجر الرئيسي</a>
+            </div>
+        </div>
+    </div>
 
-    if (!email || !password) {
-        alert("الرجاء إدخال البريد وكلمة المرور.");
-        return;
-    }
+    <!-- لوحة التحكم وإدارة المنتجات -->
+    <div id="dashboard-container" class="container py-5" style="display: none;">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>لوحة التحكم - تراث ستور</h2>
+            <div>
+                <span id="user-email-lbl" class="me-3 text-muted"></span>
+                <button onclick="logoutAdmin()" class="btn btn-outline-danger btn-sm">تسجيل الخروج</button>
+            </div>
+        </div>
 
-    let { data, error } = await supabaseClient.auth.signInWithPassword({
-        email: email,
-        password: password
-    });
+        <!-- إضافة منتج جديد -->
+        <div class="card p-4 mb-4 shadow-sm">
+            <h4>إضافة منتج جديد</h4>
+            <div class="row g-3 mt-2">
+                <div class="col-md-3">
+                    <input type="text" id="new-p-name" class="form-control" placeholder="اسم المنتج">
+                </div>
+                <div class="col-md-2">
+                    <input type="number" id="new-p-price" class="form-control" placeholder="السعر">
+                </div>
+                <div class="col-md-2">
+                    <input type="number" id="new-p-stock" class="form-control" placeholder="الكمية">
+                </div>
+                <div class="col-md-3">
+                    <input type="text" id="new-p-img" class="form-control" placeholder="رابط الصورة (URL)">
+                </div>
+                <div class="col-md-2">
+                    <button onclick="addNewProduct()" class="btn btn-success w-100">إضافة</button>
+                </div>
+            </div>
+        </div>
 
-    if (error) {
-        alert("فشل تسجيل الدخول: تأكد من صحة البيانات.");
-    } else {
-        checkSession();
-    }
-}
+        <!-- جدول عرض المنتجات الحالية -->
+        <div class="card p-4 shadow-sm">
+            <h4>قائمة المنتجات</h4>
+            <table class="table align-middle mt-3">
+                <thead>
+                    <tr>
+                        <th>المنتج</th>
+                        <th>السعر</th>
+                        <th>الكمية</th>
+                        <th>إجراء</th>
+                    </tr>
+                </thead>
+                <tbody id="admin-products-table">
+                    <!-- البيانات تعبأ برمجياً -->
+                </tbody>
+            </table>
+        </div>
+    </div>
 
-async function logoutAdmin() {
-    await supabaseClient.auth.signOut();
-    checkSession();
-}
-
-async function checkSession() {
-    let { data: { session } } = await supabaseClient.auth.getSession();
-    let authBox = document.getElementById('auth-container');
-    let dashBox = document.getElementById('dashboard-container');
-
-    if (session) {
-        authBox.style.display = 'none';
-        dashBox.style.display = 'block';
-        document.getElementById('user-email-lbl').innerText = session.user.email;
-        fetchAdminProducts();
-    } else {
-        authBox.style.display = 'block';
-        dashBox.style.display = 'none';
-    }
-}
-
-async function fetchAdminProducts() {
-    let { data, error } = await supabaseClient.from('products').select('*').order('created_at', { ascending: false });
-    let tbody = document.getElementById('admin-products-table');
-    if (!tbody || error) return;
-    tbody.innerHTML = '';
-    data.forEach(p => {
-        tbody.innerHTML += `
-            <tr>
-                <td><img src="${p.img}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 50%; margin-left: 10px;" onerror="this.src='https://via.placeholder.com/40'"> ${p.name}</td>
-                <td>${p.price} جنيه</td>
-                <td>${p.stock}</td>
-                <td><button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}')">حذف</button></td>
-            </tr>`;
-    });
-}
-
-async function addNewProduct() {
-    let name = document.getElementById('new-p-name').value.trim();
-    let price = parseFloat(document.getElementById('new-p-price').value);
-    let stock = parseInt(document.getElementById('new-p-stock').value);
-    let img = document.getElementById('new-p-img').value.trim();
-
-    if (!name || isNaN(price) || !img) {
-        alert("املأ الحقول المطلوبة.");
-        return;
-    }
-
-    let { error } = await supabaseClient.from('products').insert([{ name, price, stock, img }]);
-    if (error) {
-        alert("خطأ في الصلاحيات أو الإضافة: " + error.message);
-    } else {
-        alert("تمت الإضافة بنجاح وتحديث المتجر للجميع!");
-        document.getElementById('new-p-name').value = '';
-        document.getElementById('new-p-price').value = '';
-        document.getElementById('new-p-img').value = '';
-        fetchAdminProducts();
-    }
-}
-
-async function deleteProduct(id) {
-    if (confirm("هل أنت متأكد من الحذف؟")) {
-        let { error } = await supabaseClient.from('products').delete().eq('id', id);
-        if (error) {
-            alert("خطأ في الحذف: " + error.message);
-        } else {
-            fetchAdminProducts();
-        }
-    }
-}
-
-window.addEventListener('load', () => {
-    checkSession();
-});
+    <!-- روابط مكتبات JavaScript (مباشرة بدون مجلد js بناءً على رفعك للملفات) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script src="admin.js"></script>
+</body>
+</html>
