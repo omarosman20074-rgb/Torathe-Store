@@ -1,11 +1,9 @@
 // admin.js
 
-// 1. قائمة البريد الإلكتروني المصرح له بدخول لوحة التحكم (بريدك الأساسي)
 const ALLOWED_ADMINS = [
     "omarosman20074@gmail.com"
 ];
 
-// اسم مجلد التخزين داخل Supabase Storage
 const STORAGE_BUCKET_NAME = "product-images";
 
 function loginAdmin() {
@@ -85,31 +83,36 @@ async function addNewProduct() {
         return;
     }
 
-    // 1. إنشاء اسم فريد للصورة
-    let fileName = Date.now() + "_" + imageFile.name;
+    // تجهيز اسم فريد للملف لمنع التعارض
+    let fileExt = imageFile.name.split('.').pop();
+    let fileName = `${Date.now()}_${Math.random().toString(36.substring(2))}.${fileExt}`;
 
-    // 2. رفع الصورة إلى Supabase Storage
+    // رفع الملف مباشرة إلى Supabase Storage باستخدام الكود الأمثل
     let { data: uploadData, error: uploadError } = await supabaseClient.storage
         .from(STORAGE_BUCKET_NAME)
-        .upload(fileName, imageFile);
+        .upload(fileName, imageFile, {
+            cacheControl: '3600',
+            upsert: false
+        });
 
     if (uploadError) {
-        alert("خطأ في رفع الصورة: " + uploadError.message + "\n(تأكد من إنشاء Storage Bucket باسم product-images وجعله Public في Supabase)");
+        alert("خطأ في رفع الصورة للسيرفر: " + uploadError.message);
+        console.error(uploadError);
         return;
     }
 
-    // 3. الحصول على الرابط العام للصورة
+    // جلب الرابط العام للصورة المرفوعة
     let { data: publicUrlData } = supabaseClient.storage
         .from(STORAGE_BUCKET_NAME)
         .getPublicUrl(fileName);
 
     let img = publicUrlData.publicUrl;
 
-    // 4. حفظ بيانات المنتج في قاعدة البيانات
+    // حفظ بيانات المنتج مع رابط الصورة في قاعدة البيانات
     let { error: insertError } = await supabaseClient.from('products').insert([{ name, price, stock, img }]);
     
     if (insertError) {
-        alert("خطأ في حفظ المنتج: " + insertError.message);
+        alert("خطأ في حفظ المنتج في قاعدة البيانات: " + insertError.message);
     } else {
         alert("تم رفع الصورة وإضافة المنتج بنجاح!");
         document.getElementById('new-p-name').value = '';
