@@ -1,29 +1,9 @@
 // admin.js
 
-// تم تحديث الإيميل الخاص بك هنا ليتطابق تماماً
-const MY_ADMIN_EMAIL = "omarosman20074@gmail.com"; 
-
 function loginAdmin() {
-    let emailInput = document.getElementById('admin-email');
-    if (!emailInput) {
-        console.error("عنصر البريد الإلكتروني غير موجود في الصفحة");
-        return;
-    }
-    
-    let email = emailInput.value.trim().toLowerCase();
-
-    if (!email) {
-        alert("الرجاء إدخال البريد الإلكتروني.");
-        return;
-    }
-
-    if (email === MY_ADMIN_EMAIL.toLowerCase()) {
-        // حفظ الجلسة محلياً لكي يظل مسجلاً حتى لو حدث تحديث للصفحة
-        localStorage.setItem('torathe_admin', email);
-        checkSession();
-    } else {
-        alert("عذراً، هذا البريد غير مصرح له بفتح لوحة التحكم.");
-    }
+    // فتح لوحة التحكم مباشرة عند الضغط على الزرار
+    localStorage.setItem('torathe_admin', 'logged_in');
+    checkSession();
 }
 
 function logoutAdmin() {
@@ -32,17 +12,15 @@ function logoutAdmin() {
 }
 
 function checkSession() {
-    let savedEmail = localStorage.getItem('torathe_admin');
+    let isLoggedIn = localStorage.getItem('torathe_admin');
     let authBox = document.getElementById('auth-container');
     let dashBox = document.getElementById('dashboard-container');
 
     if (!authBox || !dashBox) return;
 
-    if (savedEmail === MY_ADMIN_EMAIL.toLowerCase()) {
+    if (isLoggedIn === 'logged_in') {
         authBox.style.display = 'none';
         dashBox.style.display = 'block';
-        let emailLbl = document.getElementById('user-email-lbl');
-        if (emailLbl) emailLbl.innerText = savedEmail;
         fetchAdminProducts();
     } else {
         authBox.style.display = 'block';
