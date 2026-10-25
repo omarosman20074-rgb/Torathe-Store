@@ -1,68 +1,97 @@
-document.addEventListener('DOMContentLoaded', () => {
-    fetchProducts();
-});
+// admin.js
 
-async function fetchProducts() {
-    let { data, error } = await supabaseClient
-        .from('products')
-        .select('*');
+async function loginAdmin() {
+    let email = document.getElementById('admin-email').value.trim();
+    let password = document.getElementById('admin-password').value.trim();
 
-    if (error) {
-        console.error('خطأ في جلب المنتجات:', error);
-    } else {
-        renderProducts(data);
-    }
-}
-
-function renderProducts(products) {
-    const productGrid = document.getElementById('products-grid');
-    productGrid.innerHTML = '';
-
-    products.forEach(product => {
-        productGrid.innerHTML += `
-            <div class="col-lg-3 col-md-6 mb-4">
-                <div class="card h-100">
-                    <img src="${product.img}" class="card-img-top" alt="${product.name}">
-                    <div class="card-body">
-                        <h5 class="card-title">${product.name}</h5>
-                        <p class="card-text">السعر: ${product.price} جنيه</p>
-                        <button class="btn btn-primary" onclick="addToCart(${product.id}, '${product.name}', ${product.price})">إضافة للسلة</button>
-                    </div>
-                </div>
-            </div>
-        `;
-    });
-}
-
-let cart = [];
-
-function addToCart(id, name, price) {
-    cart.push({ id, name, price });
-    updateCartUI();
-    alert(`تمت إضافة ${name} إلى السلة!`);
-}
-
-function updateCartUI() {
-    const cartCount = document.getElementById('cart-count');
-    cartCount.innerText = cart.length;
-}
-
-function checkout() {
-    if (cart.length === 0) {
-        alert('السلة فارغة!');
+    if (!email || !password) {
+        alert("الرجاء إدخال البريد وكلمة المرور.");
         return;
     }
 
-    let message = 'مرحباً، أرغب في شراء المنتجات التالية:\n';
-    let total = 0;
-
-    cart.forEach(item => {
-        message += `- ${item.name} بسعر ${item.price} جنيه\n`;
-        total += item.price;
+    let { data, error } = await supabaseClient.auth.signInWithPassword({
+        email: email,
+        password: password
     });
 
-    message += `\nالإجمالي: ${total} جنيه`;
-    const encodedMessage = encodeURIComponent(message);
-    const whatsappLink = `https://wa.me/201027710954?text=${encodedMessage}`;
-    window.location.href = whatsappLink;
+    if (error) {
+        alert("فشل تسجيل الدخول: تأكد من صحة البيانات.");
+    } else {
+        checkSession();
+    }
 }
+
+async function logoutAdmin() {
+    await supabaseClient.auth.signOut();
+    checkSession();
+}
+
+async function checkSession() {
+    let { data: { session } } = await supabaseClient.auth.getSession();
+    let authBox = document.getElementById('auth-container');
+    let dashBox = document.getElementById('dashboard-container');
+
+    if (session) {
+        authBox.style.display = 'none';
+        dashBox.style.display = 'block';
+        document.getElementById('user-email-lbl').innerText = session.user.email;
+        fetchAdminProducts();
+    } else {
+        authBox.style.display = 'block';
+        dashBox.style.display = 'none';
+    }
+}
+
+async function fetchAdminProducts() {
+    let { data, error } = await supabaseClient.from('products').select('*').order('created_at', { ascending: false });
+    let tbody = document.getElementById('admin-products-table');
+    if (!tbody || error) return;
+    tbody.innerHTML = '';
+    data.forEach(p => {
+        tbody.innerHTML += `
+            <tr>
+                <td><img src="${p.img}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 50%; margin-left: 10px;" onerror="this.src='https://via.placeholder.com/40'"> ${p.name}</td>
+                <td>${p.price} جنيه</td>
+                <td>${p.stock}</td>
+                <td><button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}')">حذف</button></td>
+            </tr>`;
+    });
+}
+
+async function addNewProduct() {
+    let name = document.getElementById('new-p-name').value.trim();
+    let price = parseFloat(document.getElementById('new-p-price').value);
+    let stock = parseInt(document.getElementById('new-p-stock').value);
+    let img = document.getElementById('new-p-img').value.trim();
+
+    if (!name || isNaN(price) || !img) {
+        alert("املأ الحقول المطلوبة.");
+        return;
+    }
+
+    let { error } = await supabaseClient.from('products').insert([{ name, price, stock, img }]);
+    if (error) {
+        alert("خطأ في الصلاحيات أو الإضافة: " + error.message);
+    } else {
+        alert("تمت الإضافة بنجاح وتحديث المتجر للجميع!");
+        document.getElementById('new-p-name').value = '';
+        document.getElementById('new-p-price').value = '';
+        document.getElementById('new-p-img').value = '';
+        fetchAdminProducts();
+    }
+}
+
+async function deleteProduct(id) {
+    if (confirm("هل أنت متأكد من الحذف؟")) {
+        let { error } = await supabaseClient.from('products').delete().eq('id', id);
+        if (error) {
+            alert("خطأ في الحذف: " + error.message);
+        } else {
+            fetchAdminProducts();
+        }
+    }
+}
+
+window.addEventListener('load', () => {
+    checkSession();
+});
