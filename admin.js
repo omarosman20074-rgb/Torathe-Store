@@ -81,32 +81,55 @@ async function addNewProduct() {
         return;
     }
 
-    // تحويل الصورة المرفوعة من الجهاز إلى Base64 محلياً (تجنب مشاكل التخزين والسيرفرات تماماً)
-    let reader = new FileReader();
-    reader.readAsDataURL(imageFile);
-    
-    reader.onload = async function () {
-        let img = reader.result; // النتيجة عبارة عن رابط صورة محلي مشفر وآمن
+    // إظهار تنبيه جاري الرفع
+    let addBtn = document.querySelector("button[onclick='addNewProduct()']");
+    if (addBtn) {
+        addBtn.disabled = true;
+        addBtn.innerText = "جاري الرفع...";
+    }
 
-        // حفظ بيانات المنتج والصورة معاً في جدول المنتجات
-        let { error: insertError } = await supabaseClient.from('products').insert([{ name, price, stock, img }]);
-        
-        if (insertError) {
-            alert("خطأ في حفظ المنتج في قاعدة البيانات: " + insertError.message);
+    try {
+        // رفع الصورة مباشرة تلقائياً
+        let formData = new FormData();
+        formData.append("image", imageFile);
+
+        // استخدام سيرفر رفع مجاني مباشر يرجع رابط الصورة فورا بدون مشاكل RLS أو CORS
+        let response = await fetch("https://api.imgbb.com/1/upload?key=c3046bc377f0a6723233df87ee02b0c8", {
+            method: "POST",
+            body: formData
+        });
+
+        let result = await response.json();
+
+        if (result && result.data && result.data.url) {
+            let imgUrl = result.data.url;
+
+            // حفظ البيانات في Supabase
+            let { error: insertError } = await supabaseClient.from('products').insert([
+                { name: name, price: price, stock: stock, img: imgUrl }
+            ]);
+
+            if (insertError) {
+                alert("خطأ في حفظ المنتج: " + insertError.message);
+            } else {
+                alert("تم رفع الصورة وإضافة المنتج بنجاح!");
+                document.getElementById('new-p-name').value = '';
+                document.getElementById('new-p-price').value = '';
+                if (document.getElementById('new-p-stock')) document.getElementById('new-p-stock').value = '';
+                imageFileInput.value = '';
+                fetchAdminProducts();
+            }
         } else {
-            alert("تم إضافة المنتج والصورة بنجاح وتحديث المتجر!");
-            document.getElementById('new-p-name').value = '';
-            document.getElementById('new-p-price').value = '';
-            if (document.getElementById('new-p-stock')) document.getElementById('new-p-stock').value = '';
-            imageFileInput.value = '';
-            fetchAdminProducts();
+            alert("حدث خطأ أثناء رفع الصورة، جرب صورة أخرى.");
         }
-    };
-
-    reader.onerror = function (error) {
-        alert("حدث خطأ أثناء قراءة ملف الصورة.");
-        console.error(error);
-    };
+    } catch (err) {
+        alert("خطأ في الاتصال: " + err.message);
+    } finally {
+        if (addBtn) {
+            addBtn.disabled = false;
+            addBtn.innerText = "إضافة";
+        }
+    }
 }
 
 async function deleteProduct(id) {
