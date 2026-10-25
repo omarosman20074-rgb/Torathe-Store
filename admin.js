@@ -1,10 +1,16 @@
 // admin.js
 
-// اكتب هنا الإيميل الخاص بك الذي يحق له فتح لوحة التحكم
-const MY_ADMIN_EMAIL = "omar@gmail.com"; 
+// تم تحديث الإيميل الخاص بك هنا ليتطابق تماماً
+const MY_ADMIN_EMAIL = "omarosman20074@gmail.com"; 
 
 function loginAdmin() {
-    let email = document.getElementById('admin-email').value.trim().toLowerCase();
+    let emailInput = document.getElementById('admin-email');
+    if (!emailInput) {
+        console.error("عنصر البريد الإلكتروني غير موجود في الصفحة");
+        return;
+    }
+    
+    let email = emailInput.value.trim().toLowerCase();
 
     if (!email) {
         alert("الرجاء إدخال البريد الإلكتروني.");
@@ -30,10 +36,13 @@ function checkSession() {
     let authBox = document.getElementById('auth-container');
     let dashBox = document.getElementById('dashboard-container');
 
+    if (!authBox || !dashBox) return;
+
     if (savedEmail === MY_ADMIN_EMAIL.toLowerCase()) {
         authBox.style.display = 'none';
         dashBox.style.display = 'block';
-        document.getElementById('user-email-lbl').innerText = savedEmail;
+        let emailLbl = document.getElementById('user-email-lbl');
+        if (emailLbl) emailLbl.innerText = savedEmail;
         fetchAdminProducts();
     } else {
         authBox.style.display = 'block';
