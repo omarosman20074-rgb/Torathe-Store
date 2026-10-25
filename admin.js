@@ -1,9 +1,28 @@
 // admin.js
 
+// 1. بريدك الأساسي وقائمة المشرفين المسموح لهم بفتح الداشبورد وإدارة المتجر بالكامل
+const ALLOWED_ADMINS = [
+    "omarosman20074@gmail.com" // بريدك الأساسي (يمكنك إضافة إيميلات مشرفين آخرين هنا بينهم فاصلة)
+];
+
 function loginAdmin() {
-    // فتح لوحة التحكم مباشرة عند الضغط على الزرار
-    localStorage.setItem('torathe_admin', 'logged_in');
-    checkSession();
+    let emailInput = document.getElementById('admin-email');
+    if (!emailInput) return;
+    
+    let email = emailInput.value.trim().toLowerCase();
+
+    if (!email) {
+        alert("الرجاء إدخال البريد الإلكتروني.");
+        return;
+    }
+
+    // التحقق مما إذا كان البريد موجوداً في قائمة المشرفين المصرح لهم
+    if (ALLOWED_ADMINS.includes(email)) {
+        localStorage.setItem('torathe_admin', email);
+        checkSession();
+    } else {
+        alert("عذراً، هذا البريد غير مصرح له بفتح لوحة التحكم.");
+    }
 }
 
 function logoutAdmin() {
@@ -12,15 +31,17 @@ function logoutAdmin() {
 }
 
 function checkSession() {
-    let isLoggedIn = localStorage.getItem('torathe_admin');
+    let savedEmail = localStorage.getItem('torathe_admin');
     let authBox = document.getElementById('auth-container');
     let dashBox = document.getElementById('dashboard-container');
 
     if (!authBox || !dashBox) return;
 
-    if (isLoggedIn === 'logged_in') {
+    if (savedEmail && ALLOWED_ADMINS.includes(savedEmail)) {
         authBox.style.display = 'none';
         dashBox.style.display = 'block';
+        let emailLbl = document.getElementById('user-email-lbl');
+        if (emailLbl) emailLbl.innerText = "المشرف: " + savedEmail;
         fetchAdminProducts();
     } else {
         authBox.style.display = 'block';
