@@ -4,8 +4,6 @@ const ALLOWED_ADMINS = [
     "omarosman20074@gmail.com"
 ];
 
-const STORAGE_BUCKET_NAME = "product-images";
-
 function loginAdmin() {
     let emailInput = document.getElementById('admin-email');
     if (!emailInput) return;
@@ -83,44 +81,32 @@ async function addNewProduct() {
         return;
     }
 
-    // تجهيز اسم فريد للملف لمنع التعارض
-    let fileExt = imageFile.name.split('.').pop();
-    let fileName = `${Date.now()}_${Math.random().toString(36.substring(2))}.${fileExt}`;
-
-    // رفع الملف مباشرة إلى Supabase Storage باستخدام الكود الأمثل
-    let { data: uploadData, error: uploadError } = await supabaseClient.storage
-        .from(STORAGE_BUCKET_NAME)
-        .upload(fileName, imageFile, {
-            cacheControl: '3600',
-            upsert: false
-        });
-
-    if (uploadError) {
-        alert("خطأ في رفع الصورة للسيرفر: " + uploadError.message);
-        console.error(uploadError);
-        return;
-    }
-
-    // جلب الرابط العام للصورة المرفوعة
-    let { data: publicUrlData } = supabaseClient.storage
-        .from(STORAGE_BUCKET_NAME)
-        .getPublicUrl(fileName);
-
-    let img = publicUrlData.publicUrl;
-
-    // حفظ بيانات المنتج مع رابط الصورة في قاعدة البيانات
-    let { error: insertError } = await supabaseClient.from('products').insert([{ name, price, stock, img }]);
+    // تحويل الصورة المرفوعة من الجهاز إلى Base64 محلياً (تجنب مشاكل التخزين والسيرفرات تماماً)
+    let reader = new FileReader();
+    reader.readAsDataURL(imageFile);
     
-    if (insertError) {
-        alert("خطأ في حفظ المنتج في قاعدة البيانات: " + insertError.message);
-    } else {
-        alert("تم رفع الصورة وإضافة المنتج بنجاح!");
-        document.getElementById('new-p-name').value = '';
-        document.getElementById('new-p-price').value = '';
-        if (document.getElementById('new-p-stock')) document.getElementById('new-p-stock').value = '';
-        imageFileInput.value = '';
-        fetchAdminProducts();
-    }
+    reader.onload = async function () {
+        let img = reader.result; // النتيجة عبارة عن رابط صورة محلي مشفر وآمن
+
+        // حفظ بيانات المنتج والصورة معاً في جدول المنتجات
+        let { error: insertError } = await supabaseClient.from('products').insert([{ name, price, stock, img }]);
+        
+        if (insertError) {
+            alert("خطأ في حفظ المنتج في قاعدة البيانات: " + insertError.message);
+        } else {
+            alert("تم إضافة المنتج والصورة بنجاح وتحديث المتجر!");
+            document.getElementById('new-p-name').value = '';
+            document.getElementById('new-p-price').value = '';
+            if (document.getElementById('new-p-stock')) document.getElementById('new-p-stock').value = '';
+            imageFileInput.value = '';
+            fetchAdminProducts();
+        }
+    };
+
+    reader.onerror = function (error) {
+        alert("حدث خطأ أثناء قراءة ملف الصورة.");
+        console.error(error);
+    };
 }
 
 async function deleteProduct(id) {
