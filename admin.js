@@ -81,55 +81,33 @@ async function addNewProduct() {
         return;
     }
 
-    // إظهار تنبيه جاري الرفع
-    let addBtn = document.querySelector("button[onclick='addNewProduct()']");
-    if (addBtn) {
-        addBtn.disabled = true;
-        addBtn.innerText = "جاري الرفع...";
-    }
+    // قراءة الصورة المحفوظة على الجهاز وتحويلها محلياً لضمان عدم حدوث Failed to fetch
+    let reader = new FileReader();
+    reader.readAsDataURL(imageFile);
 
-    try {
-        // رفع الصورة مباشرة تلقائياً
-        let formData = new FormData();
-        formData.append("image", imageFile);
+    reader.onload = async function () {
+        let img = reader.result; // رابط الصورة المشفر محلياً
 
-        // استخدام سيرفر رفع مجاني مباشر يرجع رابط الصورة فورا بدون مشاكل RLS أو CORS
-        let response = await fetch("https://api.imgbb.com/1/upload?key=c3046bc377f0a6723233df87ee02b0c8", {
-            method: "POST",
-            body: formData
-        });
-
-        let result = await response.json();
-
-        if (result && result.data && result.data.url) {
-            let imgUrl = result.data.url;
-
-            // حفظ البيانات في Supabase
-            let { error: insertError } = await supabaseClient.from('products').insert([
-                { name: name, price: price, stock: stock, img: imgUrl }
-            ]);
-
-            if (insertError) {
-                alert("خطأ في حفظ المنتج: " + insertError.message);
-            } else {
-                alert("تم رفع الصورة وإضافة المنتج بنجاح!");
-                document.getElementById('new-p-name').value = '';
-                document.getElementById('new-p-price').value = '';
-                if (document.getElementById('new-p-stock')) document.getElementById('new-p-stock').value = '';
-                imageFileInput.value = '';
-                fetchAdminProducts();
-            }
+        // حفظ بيانات المنتج والصورة معاً في جدول Supabase
+        let { error: insertError } = await supabaseClient.from('products').insert([
+            { name: name, price: price, stock: stock, img: img }
+        ]);
+        
+        if (insertError) {
+            alert("خطأ في حفظ المنتج في قاعدة البيانات: " + insertError.message);
         } else {
-            alert("حدث خطأ أثناء رفع الصورة، جرب صورة أخرى.");
+            alert("تم رفع الصورة وإضافة المنتج بنجاح!");
+            document.getElementById('new-p-name').value = '';
+            document.getElementById('new-p-price').value = '';
+            if (document.getElementById('new-p-stock')) document.getElementById('new-p-stock').value = '';
+            imageFileInput.value = '';
+            fetchAdminProducts();
         }
-    } catch (err) {
-        alert("خطأ في الاتصال: " + err.message);
-    } finally {
-        if (addBtn) {
-            addBtn.disabled = false;
-            addBtn.innerText = "إضافة";
-        }
-    }
+    };
+
+    reader.onerror = function () {
+        alert("فشل قراءة ملف الصورة من الجهاز.");
+    };
 }
 
 async function deleteProduct(id) {
