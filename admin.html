@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة التحكم الآمنة - تراث ستور</title>
+    <title>لوحة التحكم - تراث ستور</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -18,7 +18,7 @@
         <div class="login-box">
             <h3 class="text-center mb-4 text-danger"><i class="fas fa-lock"></i> دخول لوحة التحكم</h3>
             <div class="mb-3">
-                <label class="form-label">البريد الإلكتروني المصرح له:</label>
+                <label class="form-label">البريد الإلكتروني المعتمد:</label>
                 <input type="email" id="admin-email" class="form-control" placeholder="اكتب بريدك الإلكتروني هنا...">
             </div>
             <button onclick="loginAdmin()" class="btn btn-dark w-100 mb-3">فتح لوحة التحكم</button>
@@ -52,7 +52,8 @@
                     <input type="number" id="new-p-stock" class="form-control" placeholder="الكمية">
                 </div>
                 <div class="col-md-3">
-                    <input type="text" id="new-p-img" class="form-control" placeholder="رابط الصورة (URL)">
+                    <!-- رفع صورة من الجهاز -->
+                    <input type="file" id="new-p-img-file" class="form-control" accept="image/*">
                 </div>
                 <div class="col-md-2">
                     <button onclick="addNewProduct()" class="btn btn-success w-100">إضافة</button>
