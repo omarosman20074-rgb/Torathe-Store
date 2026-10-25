@@ -1,97 +1,107 @@
-// admin.js
-
-async function loginAdmin() {
-    let email = document.getElementById('admin-email').value.trim();
-    let password = document.getElementById('admin-password').value.trim();
-
-    if (!email || !password) {
-        alert("الرجاء إدخال البريد وكلمة المرور.");
-        return;
-    }
-
-    let { data, error } = await supabaseClient.auth.signInWithPassword({
-        email: email,
-        password: password
-    });
-
-    if (error) {
-        alert("فشل تسجيل الدخول: تأكد من صحة البيانات.");
-    } else {
-        checkSession();
-    }
-}
-
-async function logoutAdmin() {
-    await supabaseClient.auth.signOut();
-    checkSession();
-}
-
-async function checkSession() {
-    let { data: { session } } = await supabaseClient.auth.getSession();
-    let authBox = document.getElementById('auth-container');
-    let dashBox = document.getElementById('dashboard-container');
-
-    if (session) {
-        authBox.style.display = 'none';
-        dashBox.style.display = 'block';
-        document.getElementById('user-email-lbl').innerText = session.user.email;
-        fetchAdminProducts();
-    } else {
-        authBox.style.display = 'block';
-        dashBox.style.display = 'none';
-    }
-}
-
-async function fetchAdminProducts() {
-    let { data, error } = await supabaseClient.from('products').select('*').order('created_at', { ascending: false });
-    let tbody = document.getElementById('admin-products-table');
-    if (!tbody || error) return;
-    tbody.innerHTML = '';
-    data.forEach(p => {
-        tbody.innerHTML += `
-            <tr>
-                <td><img src="${p.img}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 50%; margin-left: 10px;" onerror="this.src='https://via.placeholder.com/40'"> ${p.name}</td>
-                <td>${p.price} جنيه</td>
-                <td>${p.stock}</td>
-                <td><button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}')">حذف</button></td>
-            </tr>`;
-    });
-}
-
-async function addNewProduct() {
-    let name = document.getElementById('new-p-name').value.trim();
-    let price = parseFloat(document.getElementById('new-p-price').value);
-    let stock = parseInt(document.getElementById('new-p-stock').value);
-    let img = document.getElementById('new-p-img').value.trim();
-
-    if (!name || isNaN(price) || !img) {
-        alert("املأ الحقول المطلوبة.");
-        return;
-    }
-
-    let { error } = await supabaseClient.from('products').insert([{ name, price, stock, img }]);
-    if (error) {
-        alert("خطأ في الصلاحيات أو الإضافة: " + error.message);
-    } else {
-        alert("تمت الإضافة بنجاح وتحديث المتجر للجميع!");
-        document.getElementById('new-p-name').value = '';
-        document.getElementById('new-p-price').value = '';
-        document.getElementById('new-p-img').value = '';
-        fetchAdminProducts();
-    }
-}
-
-async function deleteProduct(id) {
-    if (confirm("هل أنت متأكد من الحذف؟")) {
-        let { error } = await supabaseClient.from('products').delete().eq('id', id);
-        if (error) {
-            alert("خطأ في الحذف: " + error.message);
-        } else {
-            fetchAdminProducts();
-        }
-    }
-}
-
-window.addEventListener('load', () => {
-    checkSession();
+// store.js
+document.addEventListener('DOMContentLoaded', () => {
+    fetchProducts();
 });
+
+async function fetchProducts() {
+    let { data, error } = await supabaseClient
+        .from('products')
+        .select('*');
+
+    if (error) {
+        console.error('خطأ في جلب المنتجات:', error);
+    } else {
+        renderProducts(data);
+    }
+}
+
+function renderProducts(products) {
+    const productGrid = document.getElementById('products-grid');
+    productGrid.innerHTML = '';
+
+    if (!products || products.length === 0) {
+        productGrid.innerHTML = '<p class="text-center text-muted">لا توجد منتجات مضافة حالياً.</p>';
+        return;
+    }
+
+    products.forEach(product => {
+        productGrid.innerHTML += `
+            <div class="col-lg-3 col-md-6 mb-4">
+                <div class="card product-card h-100 shadow-sm">
+                    <img src="${product.img}" class="card-img-top" alt="${product.name}" style="height: 200px; object-fit: cover;" onerror="this.src='https://via.placeholder.com/300'">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title">${product.name}</h5>
+                        <p class="card-text mt-2">السعر: ${product.price} جنيه</p>
+                        <p class="card-text text-white-50 small">الكمية المتاحة: ${product.stock}</p>
+                        <button class="btn btn-custom-gold mt-auto" onclick="addToCart('${product.id}', '${product.name}', ${product.price})">إضافة للسلة</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+}
+
+let cart = [];
+
+function addToCart(id, name, price) {
+    let existingItem = cart.find(item => item.id === id);
+    if (existingItem) {
+        existingItem.quantity += 1;
+    } else {
+        cart.push({ id, name, price, quantity: 1 });
+    }
+    updateCartUI();
+    alert(`تمت إضافة ${name} إلى السلة!`);
+}
+
+function updateCartUI() {
+    const cartCount = document.getElementById('cart-count');
+    const cartItemsBody = document.getElementById('cart-items-body');
+    const grandTotalLbl = document.getElementById('grand-total');
+
+    cartCount.innerText = cart.reduce((sum, item) => sum + item.quantity, 0);
+    cartItemsBody.innerHTML = '';
+
+    let total = 0;
+
+    cart.forEach((item, index) => {
+        let itemTotal = item.price * item.quantity;
+        total += itemTotal;
+        cartItemsBody.innerHTML += `
+            <tr>
+                <td>${item.name}</td>
+                <td>${item.price} جنيه</td>
+                <td>${item.quantity}</td>
+                <td>${itemTotal} جنيه</td>
+                <td><button class="btn btn-danger btn-sm" onclick="removeFromCart(${index})"><i class="fas fa-trash"></i></button></td>
+            </tr>
+        `;
+    });
+
+    grandTotalLbl.innerText = `${total} جنيه`;
+}
+
+function removeFromCart(index) {
+    cart.splice(index, 1);
+    updateCartUI();
+}
+
+function checkout() {
+    if (cart.length === 0) {
+        alert('السلة فارغة!');
+        return;
+    }
+
+    let message = 'مرحباً، أرغب في شراء المنتجات التالية:\n';
+    let total = 0;
+
+    cart.forEach(item => {
+        message += `- ${item.name} (الكمية: ${item.quantity}) بسعر ${item.price * item.quantity} جنيه\n`;
+        total += item.price * item.quantity;
+    });
+
+    message += `\nالإجمالي الكلي: ${total} جنيه`;
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappLink = `https://wa.me/201027710954?text=${encodedMessage}`;
+    window.location.href = whatsappLink;
+}
