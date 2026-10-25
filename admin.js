@@ -73,41 +73,27 @@ async function addNewProduct() {
     let name = document.getElementById('new-p-name').value.trim();
     let price = parseFloat(document.getElementById('new-p-price').value);
     let stock = parseInt(document.getElementById('new-p-stock').value);
-    let imageFileInput = document.getElementById('new-p-img-file');
-    let imageFile = imageFileInput ? imageFileInput.files[0] : null;
+    let img = document.getElementById('new-p-img').value.trim(); // رابط الصورة
 
-    if (!name || isNaN(price) || !imageFile) {
-        alert("الرجاء إدخال اسم المنتج، السعر، واختيار صورة من الجهاز.");
+    if (!name || isNaN(price) || !img) {
+        alert("الرجاء إدخال اسم المنتج، السعر، ورابط الصورة.");
         return;
     }
 
-    // قراءة الصورة المحفوظة على الجهاز وتحويلها محلياً لضمان عدم حدوث Failed to fetch
-    let reader = new FileReader();
-    reader.readAsDataURL(imageFile);
-
-    reader.onload = async function () {
-        let img = reader.result; // رابط الصورة المشفر محلياً
-
-        // حفظ بيانات المنتج والصورة معاً في جدول Supabase
-        let { error: insertError } = await supabaseClient.from('products').insert([
-            { name: name, price: price, stock: stock, img: img }
-        ]);
-        
-        if (insertError) {
-            alert("خطأ في حفظ المنتج في قاعدة البيانات: " + insertError.message);
-        } else {
-            alert("تم رفع الصورة وإضافة المنتج بنجاح!");
-            document.getElementById('new-p-name').value = '';
-            document.getElementById('new-p-price').value = '';
-            if (document.getElementById('new-p-stock')) document.getElementById('new-p-stock').value = '';
-            imageFileInput.value = '';
-            fetchAdminProducts();
-        }
-    };
-
-    reader.onerror = function () {
-        alert("فشل قراءة ملف الصورة من الجهاز.");
-    };
+    let { error: insertError } = await supabaseClient.from('products').insert([
+        { name: name, price: price, stock: stock, img: img }
+    ]);
+    
+    if (insertError) {
+        alert("خطأ في حفظ المنتج: " + insertError.message);
+    } else {
+        alert("تم إضافة المنتج بنجاح!");
+        document.getElementById('new-p-name').value = '';
+        document.getElementById('new-p-price').value = '';
+        if (document.getElementById('new-p-stock')) document.getElementById('new-p-stock').value = '';
+        document.getElementById('new-p-img').value = '';
+        fetchAdminProducts();
+    }
 }
 
 async function deleteProduct(id) {
